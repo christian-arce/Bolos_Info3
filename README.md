@@ -1,5 +1,5 @@
 # Bolos_Info3
-Rrabajo práctico de un minijuego de bolos desarrollado para la materia Informática 3. El minijuego está construido utilizando la biblioteca Three.js.
+Trabajo práctico de un minijuego de bolos desarrollado para la materia Informática 3. El minijuego está construido utilizando la biblioteca Three.js.
 
 # Instrucciones para levantar el archivo `Bowling.html`
 
