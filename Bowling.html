@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Juego de Bolos Mejorado</title>
+  <style>
+    /* Estilos CSS */
+    body {
+      margin: 0;
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+      color: #fff;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      transition: background-image 0.5s ease-in-out;
+    }
+    #score {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: rgba(0, 0, 0, 0.5);
+      padding: 10px;
+      border-radius: 5px;
+      display: none;
+    }
+    #menu {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      font-size: 24px;
+      background: rgba(0, 0, 0, 0.7);
+      padding: 20px;
+      border-radius: 10px;
+      z-index: 10;
+    }
+    #menu img {
+      width: 100%;
+      max-width: 300px;
+      margin-bottom: 20px;
+    }
+    #menu button {
+      padding: 10px 20px;
+      font-size: 18px;
+      cursor: pointer;
+      border: none;
+      background-color: rgb(9, 151, 240);
+      color: white;
+      border-radius: 5px;
+    }
+    #scoreMessage {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      font-size: 24px;
+      background: rgba(0, 0, 0, 0.7);
+      padding: 20px;
+      border-radius: 10px;
+      color: white;
+      display: none;
+    }
+    #scoreMessage button {
+      padding: 10px 20px;
+      font-size: 18px;
+      cursor: pointer;
+      border: none;
+      background-color: rgb(9, 151, 240);
+      color: white;
+      border-radius: 5px;
+    }
+    #loadingScreen {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      color: white;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 20;
+      font-size: 24px;
+      display: none;
+    }
+    #controls {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      font-size: 20px;
+      background: black;
+      padding: 15px;
+      border-radius: 10px;
+      color: white;
+      display: none;
+      z-index: 10;
+    }
+    #controls button {
+      padding: 10px 20px;
+      font-size: 18px;
+      cursor: pointer;
+      border: none;
+      background-color: rgb(9, 151, 240);
+      color: white;
+      border-radius: 5px;
+    }
+    #mapSelect:focus {
+      box-shadow: 0 0 10px skyblue;
+    }
+    #mapSelect option {
+      padding: 10px;
+      background-color: #333;
+      color: white;
+      border: none;
+    }
+    #mapSelect option:hover {
+      background-color: skyblue;
+    }
+  </style>
+</head>
+<body>
+  <div id="score">Puntuación: 0</div>
+
+  <div id="menu">
+    <img src="./Imagenes/bolos.jpg" alt="Logo del Juego">
+    <p>Bienvenido al Juego de Bolos</p>
+    <label for="mapSelect">Elige el mapa:</label>
+    <select id="mapSelect">
+      <option value="./HDR/sky.hdr" selected>Cielo</option>
+      <option value="./HDR/nublado.hdr">Cielo Nublado</option>
+      <option value="./HDR/cielo2.hdr">Cielo Despejado</option>
+      <option value="./HDR/noche.hdr">Noche</option>
+    </select>
+    <button id="controlsButton">Controles</button>
+    <button id="startButton">Jugar</button>
+  </div>
+
+  <div id="controls">
+    <p><strong>Controles:</strong></p>
+    <p>Click izquierdo - Tirar</p>
+    <p>A - Mover a la izquierda</p>
+    <p>D - Mover a la derecha</p>
+    <button id="closeControls">Cerrar</button>
+  </div>
+
+  <div id="scoreMessage">
+    <p id="scoreMessageText"></p>
+    <button id="menuButton">Menú</button>
+    <button id="restartButton">Reiniciar</button>
+  </div>
+
+  <div id="loadingScreen">
+    <p>Cargando mapa, por favor espera...</p>
+  </div>
+
+  <audio id="background-music" loop>
+    <source src="./Musica/wii.mp3" type="audio/mpeg">
+  </audio>
+
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "./threejs/three.module.js",
+        "RGBELoader": "./threejs/loaders/RGBELoader.js",
+        "OrbitControls": "./threejs/addons/OrbitControls.js"
+      }
+    }
+  </script>
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'OrbitControls';
+    import { RGBELoader } from 'RGBELoader';
+
+    // Crear la escena, camara y renderizador
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.2;
+    renderer.outputEncoding = THREE.sRGBEncoding;
+    renderer.shadowMap.enabled = true;
+    document.body.appendChild(renderer.domElement);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+
+    // Mostrar y ocultar las instrucciones
+    const controlsDiv = document.getElementById('controls');
+
+    document.getElementById('controlsButton').addEventListener('click', () => {
+      controlsDiv.style.display = (controlsDiv.style.display === 'none' || controlsDiv.style.display === '') ? 'block' : 'none';
+    });
+
+    document.getElementById('closeControls').addEventListener('click', () => {
+      controlsDiv.style.display = 'none';
+    });
+
+    // Funcion para cargar HDRI
+    function loadHDRI(hdrFile) {
+      const rgbeLoader = new RGBELoader();
+      rgbeLoader.load(`./${hdrFile}`, (hdrTexture) => {
+        hdrTexture.mapping = THREE.EquirectangularReflectionMapping;
+        scene.background = hdrTexture;
+        scene.environment = hdrTexture;
+      });
+    }
+
+    document.body.style.backgroundImage = `url('./Imagenes/sky.png')`;
+
+    // Textura para el carril de bolos
+    const textureLoader = new THREE.TextureLoader();
+    const laneTexture = textureLoader.load('./Imagenes/texture2.jpg');
+    laneTexture.wrapS = THREE.RepeatWrapping;
+    laneTexture.wrapT = THREE.RepeatWrapping;
+    laneTexture.repeat.set(1, 10);
+
+    const floorGeometry = new THREE.PlaneGeometry(10, 60);
+    const floorMaterial = new THREE.MeshStandardMaterial({
+      map: laneTexture,
+      metalness: 0.2,
+      roughness: 0.8
+    });
+    const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+    floor.rotation.x = -Math.PI / 2;
+    floor.receiveShadow = true;
+    floor.position.set(0, 0, -10);
+    scene.add(floor);
+
+    // Pantalla de puntuacion (decorativo)
+    const scoreTexture = textureLoader.load('./Imagenes/bowlingScreen.jpg');
+    const screenGeometry = new THREE.PlaneGeometry(5, 3);
+    const screenMaterial = new THREE.MeshBasicMaterial({ map: scoreTexture });
+    const screen = new THREE.Mesh(screenGeometry, screenMaterial);
+    screen.position.set(0, 5, -1);
+    scene.add(screen);
+
+    // Textura para los pinos
+    const pinCanvas = document.createElement('canvas');
+    pinCanvas.width = 64;
+    pinCanvas.height = 128;
+
+    const pinContext = pinCanvas.getContext('2d');
+
+    // Fondo blanco para los pinos
+    pinContext.fillStyle = '#ffffff';
+    pinContext.fillRect(0, 0, pinCanvas.width, pinCanvas.height);
+
+    // Raya roja en el centro
+    pinContext.fillStyle = '#ff0000';
+    pinContext.fillRect(20, 50, pinCanvas.width, 20); // (x, y, ancho, alto)
+
+    // Usar la textura en el material de los pinos
+    const pinTexture = new THREE.CanvasTexture(pinCanvas);
+    const pinMaterial = new THREE.MeshStandardMaterial({
+      map: pinTexture,
+      metalness: 0.3,
+      roughness: 0.6,
+    });
+
+    // Crear pinos
+    const pinGeometry = new THREE.CylinderGeometry(0.2, 0.4, 1.5, 32);
+    const pins = [];
+    const pinInitialStates = [];
+
+    for (let row = 0; row < 4; row++) {
+      for (let col = 0; col <= row; col++) {
+        const pin = new THREE.Mesh(pinGeometry, pinMaterial);
+        pin.castShadow = true;
+        const position = {
+          x: -row * 0.5 + col * 1,
+          y: 0.75,
+          z: -15 - row * 1.5,
+        };
+        pin.position.set(position.x, position.y, position.z);
+        pin.rotation.y = Math.PI;
+        scene.add(pin);
+        pins.push(pin);
+
+        pinInitialStates.push({
+          position: { ...position },
+          rotation: { x: 0, y: Math.PI, z: 0 },
+        });
+      }
+    }
+
+    // Bola
+    const ballGeometry = new THREE.SphereGeometry(0.5, 32, 32);
+    const ballMaterial = new THREE.MeshStandardMaterial({ color: 0x1e90ff, metalness: 0.7, roughness: 0.2 });
+    const ball = new THREE.Mesh(ballGeometry, ballMaterial);
+    ball.castShadow = true;
+    const initialPosition = new THREE.Vector3(0, 0.5, 18);
+    ball.position.copy(initialPosition);
+    scene.add(ball);
+
+    // Puntuacion
+    let score = 0;
+    const scoreElement = document.getElementById('score');
+
+    let isMoving = false;
+    let ballVelocity = new THREE.Vector3(0, 0, -0.2);
+
+    // Variables de control de movimiento de la bola
+    let ballDirection = new THREE.Vector3(0, 0, 0);
+    const moveSpeed = 0.2;  // Velocidad del movimiento de la bola A-D
+    // Control de click para mover la bola
+    const clickMove = () => {
+      if (!isMoving) {
+        isMoving = true;
+        ballVelocity.set(0, 0, -0.18);  // Velocidad de la bola
+        //setTimeout(resetBall, 5000);
+      }
+    };
+
+    // Evento de inicio del juego
+    document.getElementById('startButton').addEventListener('click', () => {
+      const selectedMap = document.getElementById('mapSelect').value; // Obtener la opcion seleccionada
+      const loadingScreen = document.getElementById('loadingScreen');
+      loadingScreen.style.display = 'flex';
+      loadHDRI(selectedMap);
+      // Retrasar el inicio del juego hasta que el HDR cargue
+      setTimeout(() => {
+        loadHDRI(selectedMap); // Carga el HDRI según la selección
+        startGame();
+        document.getElementById('background-music').play();
+
+        // Ocultar la pantalla de carga
+        loadingScreen.style.display = 'none';
+      }, 2000); // 2 segundos de retraso
+    });
+
+    document.getElementById('mapSelect').addEventListener('change', (event) => {
+      const selectedOption = event.target.value; // Obtener la opcion seleccionada
+
+      let backgroundImage;
+      switch (selectedOption) {
+        case "./HDR/sky.hdr":
+          backgroundImage = "./Imagenes/sky.png";
+          break;
+        case "./HDR/nublado.hdr":
+          backgroundImage = "./Imagenes/nublado.png";
+          break;
+        case "./HDR/noche.hdr":
+          backgroundImage = "./Imagenes/noche.png";
+          break;
+        case "./HDR/cielo2.hdr":
+          backgroundImage = "./Imagenes/cielo2.png";
+          break;
+        default:
+          backgroundImage = "./Imagenes/sky.png";
+      }
+
+      // Cambiar el fondo (menu)
+      document.body.style.backgroundImage = `url('${backgroundImage}')`;
+    });
+
+    document.getElementById('restartButton').addEventListener('click', () => {
+      document.getElementById('scoreMessage').style.display = 'none';
+      resetGame();
+    });
+
+    // Comienza el juego
+    function startGame() {
+      document.getElementById('menu').style.display = 'none';
+      document.getElementById('score').style.display = 'block';
+      renderer.domElement.addEventListener('click', clickMove);  // Escuchar click para mover la bola
+      animate();
+    }
+
+    // Reinicia la bola
+    function resetBall() {
+      isMoving = false;
+      ball.position.copy(initialPosition);
+      ballVelocity.set(0, 0, 0); // Detener la velocidad de la bola
+
+      pins.forEach((pin, index) => {
+        const initialState = pinInitialStates[index];
+        pin.position.set(
+          initialState.position.x,
+          initialState.position.y,
+          initialState.position.z
+        );
+        pin.rotation.set(
+          initialState.rotation.x,
+          initialState.rotation.y,
+          initialState.rotation.z
+        );
+      });
+      pin.rotation.y = Math.PI;
+      score = 0;
+      scoreElement.textContent = `Puntuación: ${score}`;
+      renderer.domElement.addEventListener('click', clickMove);  // Rehabilitar click para mover bola
+    }
+
+    // Reinicia Juego
+    function resetGame() {
+      document.getElementById('score').style.display = 'block'; // Mostrar la puntuacion
+      ball.visible = true; // Mostrar la bola
+      score = 0;
+      scoreElement.textContent = `Puntuación: ${score}`;
+      pins.forEach((pin) => {
+          pin.hit = false; // Reiniciar pinos tirados
+      });
+      resetBall();
+    }
+
+    // Mostrar mensaje con puntuacion
+    function showScoreMessage() {
+      document.getElementById('scoreMessageText').textContent = `Puntuación: ${score}`;
+      document.getElementById('scoreMessage').style.display = 'block';
+      document.getElementById('score').style.display = 'none'; // Ocultar la puntuacion
+      ball.visible = false; // Ocultar la bola
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+
+      // Mover la bola
+      if (isMoving) {
+        ball.position.add(ballVelocity);
+      }
+      const laneWidth = 10;
+      const laneHeight = 60;
+      if (ball.position.x < -laneWidth / 2 || ball.position.x > laneWidth / 2 || ball.position.z < -laneHeight) {
+      showScoreMessage();
+      }
+      // Comprobar si la bola ha golpeado los bolos
+      pins.forEach((pin) => {
+        if (ball.position.distanceTo(pin.position) < 0.7) {
+          pin.rotation.x += Math.random()*0.2;
+          pin.rotation.z += Math.random()*0.2;
+          pin.position.y -= 0.05;
+        }
+      });
+
+      pins.forEach((pin) => {
+        if (!pin.hit && ball.position.distanceTo(pin.position) < 0.7) {
+          pin.hit = true; // Marcar el pino como golpeado
+          score += 10;
+          scoreElement.textContent = `Puntuación: ${score}`;
+        }
+      });
+
+      controls.update();
+      renderer.render(scene, camera);
+    }
+
+    // Ubicacion de la camara
+    camera.position.set(0, 5, 24);
+    camera.lookAt(0, 0, -15);
+
+    // Evento para regresar al menu
+    document.getElementById('menuButton').addEventListener('click', () => {
+      window.location.reload();
+    });
+
+    // Control de teclas
+    window.addEventListener('keydown', (event) => {
+      if (event.key === 'a') {
+        ball.position.x -= moveSpeed;
+      }
+      if (event.key === 'd') {
+        ball.position.x += moveSpeed;
+      }
+    });
+  </script>
+</body>
+</html>
